@@ -126,6 +126,7 @@ try:
     >>> test_dtype('l', inc1_long)
     >>> test_dtype('L', inc1_ulong)
     
+    >>> test_dtype('e', inc1_float16)
     >>> test_dtype('f', inc1_float)
     >>> test_dtype('d', inc1_double)
     >>> test_dtype('g', inc1_longdouble)
@@ -309,6 +310,7 @@ def inc1_ulong(np.ndarray[unsigned long] arr):          arr[1] += 1
 def inc1_longlong(np.ndarray[long long] arr):           arr[1] += 1
 def inc1_ulonglong(np.ndarray[unsigned long long] arr): arr[1] += 1
 
+def inc1_float16(np.ndarray[unsigned short, cast=True, halffloat=True] arr):    arr[1] += 1
 def inc1_float(np.ndarray[float] arr):                  arr[1] += 1
 def inc1_double(np.ndarray[double] arr):                arr[1] += 1
 def inc1_longdouble(np.ndarray[long double] arr):       arr[1] += 1
@@ -345,6 +347,8 @@ def inc1_double_t(np.ndarray[np.double_t] arr):         arr[1] += 1
 def inc1_longdouble_t(np.ndarray[np.longdouble_t] arr): arr[1] += 1
 def inc1_intp_t(np.ndarray[np.intp_t] arr):             arr[1] += 1
 def inc1_uintp_t(np.ndarray[np.uintp_t] arr):           arr[1] += 1
+
+def inc1_halffloat_t(np.ndarray[np.uint16_t, cast=True, halffloat=True] arr):     arr[1] += 1
 
 # The tests below only work on platforms that has the given types
 def inc1_int32_t(np.ndarray[np.int32_t] arr):           arr[1] += 1

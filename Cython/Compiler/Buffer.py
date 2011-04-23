@@ -112,8 +112,8 @@ class IntroduceBufferAuxiliaryVars(CythonTransform):
 #
 # Analysis
 #
-buffer_options = ("dtype", "ndim", "mode", "negative_indices", "cast") # ordered!
-buffer_defaults = {"ndim": 1, "mode": "full", "negative_indices": True, "cast": False}
+buffer_options = ("dtype", "ndim", "mode", "negative_indices", "cast", "halffloat") # ordered!
+buffer_defaults = {"ndim": 1, "mode": "full", "negative_indices": True, "cast": False, "halffloat":False}
 buffer_positional_options_count = 1 # anything beyond this needs keyword argument
 
 ERR_BUF_OPTION_UNKNOWN = '"%s" is not a buffer option'
@@ -185,6 +185,7 @@ def analyse_buffer_options(globalpos, env, posargs, dictargs, defaults=None, nee
 
     assert_bool('negative_indices')
     assert_bool('cast')
+    assert_bool('halffloat')
 
     return options
 
@@ -735,14 +736,16 @@ typedef struct {
 static CYTHON_INLINE int  __Pyx_GetBufferAndValidate(Py_buffer* buf, PyObject* obj, __Pyx_TypeInfo* dtype, int flags, int nd, int cast, __Pyx_BufFmt_StackElem* stack);
 static CYTHON_INLINE void __Pyx_SafeReleaseBuffer(Py_buffer* info);
 
-typedef short float float;
+#include <math.h>
 
-static CYTHON_INLINE short float __Pyx_HalfFloat_Pack(float);
-static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(short float);
+typedef unsigned short halffloat_typedef;
+
+static CYTHON_INLINE halffloat_typedef __Pyx_HalfFloat_Pack(float);
+static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(halffloat_typedef);
 """, impl="""
 
 /* see double _PyFloat_Unpack2(const unsigned char *p, int le) from cpython */
-static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(%(type)s hh) {
+static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(halffloat_typedef hh) {
     unsigned char sign;
     int e;
     unsigned int f;
@@ -790,7 +793,7 @@ static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(%(type)s hh) {
 }
 
 /* see double _PyFloat_Pack2(const unsigned char *p, int le) from cpython */
-static CYTHON_INLINE %(type)s __Pyx_HalfFloat_Pack(float x) {
+static CYTHON_INLINE halffloat_typedef __Pyx_HalfFloat_Pack(float x) {
     unsigned int sign;
     int e;
     double f;
@@ -952,7 +955,7 @@ static const char* __Pyx_BufFmt_DescribeTypeChar(char ch, int is_complex) {
     case 'L': return "'unsigned long'";
     case 'q': return "'long long'";
     case 'Q': return "'unsigned long long'";
-    case 'e': return "'short float'";
+    case 'e': return "'halffloat_typedef'";
     case 'f': return (is_complex ? "'complex float'" : "'float'");
     case 'd': return (is_complex ? "'complex double'" : "'double'");
     case 'g': return (is_complex ? "'complex long double'" : "'long double'");
@@ -993,7 +996,7 @@ static size_t __Pyx_BufFmt_TypeCharToNativeSize(char ch, int is_complex) {
     #ifdef HAVE_LONG_LONG
     case 'q': case 'Q': return sizeof(PY_LONG_LONG);
     #endif
-    case 'e': return sizeof(short float);
+    case 'e': return sizeof(halffloat_typedef);
     case 'f': return sizeof(float) * (is_complex ? 2 : 1);
     case 'd': return sizeof(double) * (is_complex ? 2 : 1);
     case 'g': return sizeof(long double) * (is_complex ? 2 : 1);
@@ -1008,7 +1011,7 @@ static size_t __Pyx_BufFmt_TypeCharToNativeSize(char ch, int is_complex) {
 typedef struct { char c; short x; } __Pyx_st_short;
 typedef struct { char c; int x; } __Pyx_st_int;
 typedef struct { char c; long x; } __Pyx_st_long;
-typedef struct { char c; short float x; } __Pyx_st_halffloat;
+typedef struct { char c; halffloat_typedef x; } __Pyx_st_halffloat;
 typedef struct { char c; float x; } __Pyx_st_float;
 typedef struct { char c; double x; } __Pyx_st_double;
 typedef struct { char c; long double x; } __Pyx_st_longdouble;
@@ -1026,7 +1029,7 @@ static size_t __Pyx_BufFmt_TypeCharToAlignment(char ch, int is_complex) {
 #ifdef HAVE_LONG_LONG
     case 'q': case 'Q': return sizeof(__Pyx_s_long_long) - sizeof(PY_LONG_LONG);
 #endif
-    case 'e': return sizeof(__Pyx_st_halffloat) - sizeof(short float);
+    case 'e': return sizeof(__Pyx_st_halffloat) - sizeof(halffloat_typedef);
     case 'f': return sizeof(__Pyx_st_float) - sizeof(float);
     case 'd': return sizeof(__Pyx_st_double) - sizeof(double);
     case 'g': return sizeof(__Pyx_st_longdouble) - sizeof(long double);
