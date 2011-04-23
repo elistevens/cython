@@ -2333,6 +2333,9 @@ class IndexNode(ExprNode):
             if code.globalstate.directives['nonecheck']:
                 self.put_nonecheck(code)
             self.buffer_ptr_code = self.buffer_lookup_code(code)
+            if self.buffer_type.dtype.is_halffloat:
+                self.buffer_ptr_code = "__Pyx_HalfFloat_Unpack(%s)" % self.buffer_ptr_code
+            
             if self.type.is_pyobject:
                 # is_temp is True, so must pull out value and incref it.
                 code.putln("%s = *%s;" % (self.result(), self.buffer_ptr_code))
@@ -2425,6 +2428,13 @@ class IndexNode(ExprNode):
             code.putln("*%s %s= %s;" % (ptr, op, rhs_code))
             code.put_giveref("*%s" % ptr)
             code.funcstate.release_temp(ptr)
+        if self.buffer_type.dtype.is_halffloat:
+            if  op == '':
+                code.putln("*%s = __Pyx_HalfFloat_Pack(%s);" % (ptrexpr, rhs.result()))
+            else:
+                ptr = code.funcstate.allocate_temp(self.buffer_type.buffer_ptr_type, manage_ref=False)
+                code.putln("%s = %s;" % (ptr, ptrexpr))
+                code.putln("*%s = __Pyx_HalfFloat_Pack(__Pyx_HalfFloat_Unpack(*%s) %s %s);" % (ptr, ptr, op, rhs.result()))
         else:
             # Simple case
             code.putln("*%s %s= %s;" % (ptrexpr, op, rhs.result()))
