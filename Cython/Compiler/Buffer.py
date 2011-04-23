@@ -735,6 +735,8 @@ typedef struct {
 static CYTHON_INLINE int  __Pyx_GetBufferAndValidate(Py_buffer* buf, PyObject* obj, __Pyx_TypeInfo* dtype, int flags, int nd, int cast, __Pyx_BufFmt_StackElem* stack);
 static CYTHON_INLINE void __Pyx_SafeReleaseBuffer(Py_buffer* info);
 
+typedef short float float;
+
 static CYTHON_INLINE short float __Pyx_HalfFloat_Pack(float);
 static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(short float);
 """, impl="""
@@ -950,6 +952,7 @@ static const char* __Pyx_BufFmt_DescribeTypeChar(char ch, int is_complex) {
     case 'L': return "'unsigned long'";
     case 'q': return "'long long'";
     case 'Q': return "'unsigned long long'";
+    case 'e': return "'short float'";
     case 'f': return (is_complex ? "'complex float'" : "'float'");
     case 'd': return (is_complex ? "'complex double'" : "'double'");
     case 'g': return (is_complex ? "'complex long double'" : "'long double'");
@@ -967,6 +970,7 @@ static size_t __Pyx_BufFmt_TypeCharToStandardSize(char ch, int is_complex) {
     case 'h': case 'H': return 2;
     case 'i': case 'I': case 'l': case 'L': return 4;
     case 'q': case 'Q': return 8;
+    case 'e': 2;
     case 'f': return (is_complex ? 8 : 4);
     case 'd': return (is_complex ? 16 : 8);
     case 'g': {
@@ -989,6 +993,7 @@ static size_t __Pyx_BufFmt_TypeCharToNativeSize(char ch, int is_complex) {
     #ifdef HAVE_LONG_LONG
     case 'q': case 'Q': return sizeof(PY_LONG_LONG);
     #endif
+    case 'e': return sizeof(short float);
     case 'f': return sizeof(float) * (is_complex ? 2 : 1);
     case 'd': return sizeof(double) * (is_complex ? 2 : 1);
     case 'g': return sizeof(long double) * (is_complex ? 2 : 1);
@@ -1003,6 +1008,7 @@ static size_t __Pyx_BufFmt_TypeCharToNativeSize(char ch, int is_complex) {
 typedef struct { char c; short x; } __Pyx_st_short;
 typedef struct { char c; int x; } __Pyx_st_int;
 typedef struct { char c; long x; } __Pyx_st_long;
+typedef struct { char c; short float x; } __Pyx_st_halffloat;
 typedef struct { char c; float x; } __Pyx_st_float;
 typedef struct { char c; double x; } __Pyx_st_double;
 typedef struct { char c; long double x; } __Pyx_st_longdouble;
@@ -1020,6 +1026,7 @@ static size_t __Pyx_BufFmt_TypeCharToAlignment(char ch, int is_complex) {
 #ifdef HAVE_LONG_LONG
     case 'q': case 'Q': return sizeof(__Pyx_s_long_long) - sizeof(PY_LONG_LONG);
 #endif
+    case 'e': return sizeof(__Pyx_st_halffloat) - sizeof(short float);
     case 'f': return sizeof(__Pyx_st_float) - sizeof(float);
     case 'd': return sizeof(__Pyx_st_double) - sizeof(double);
     case 'g': return sizeof(__Pyx_st_longdouble) - sizeof(long double);
@@ -1034,7 +1041,7 @@ static size_t __Pyx_BufFmt_TypeCharToGroup(char ch, int is_complex) {
   switch (ch) {
     case 'c': case 'b': case 'h': case 'i': case 'l': case 'q': return 'I';
     case 'B': case 'H': case 'I': case 'L': case 'Q': return 'U';
-    case 'f': case 'd': case 'g': return (is_complex ? 'C' : 'R');
+    case 'e': case 'f': case 'd': case 'g': return (is_complex ? 'C' : 'R');
     case 'O': return 'O';
     case 'P': return 'P';
     default: {
@@ -1233,7 +1240,7 @@ static const char* __Pyx_BufFmt_CheckString(__Pyx_BufFmt_Context* ctx, const cha
         }        /* fall through */
       case 'c': case 'b': case 'B': case 'h': case 'H': case 'i': case 'I':
       case 'l': case 'L': case 'q': case 'Q':
-      case 'f': case 'd': case 'g':
+      case 'e': case 'f': case 'd': case 'g':
       case 'O':
         if (ctx->enc_type == *ts && got_Z == ctx->is_complex &&
             ctx->enc_packmode == ctx->new_packmode) {

@@ -2387,6 +2387,7 @@ c_sint_type =        CIntType(2, SIGNED)
 c_slong_type =       CIntType(3, SIGNED)
 c_slonglong_type =   CIntType(4, SIGNED)
 
+c_halffloat_type =   CHalfFloatType(5) # FIXME: what rank?
 c_float_type =       CFloatType(5, math_h_modifier='f')
 c_double_type =      CFloatType(6)
 c_longdouble_type =  CFloatType(7, math_h_modifier='l')
@@ -2448,6 +2449,7 @@ modifiers_and_name_to_type = {
     (2,  1, "int"): c_slong_type,
     (2,  2, "int"): c_slonglong_type,
 
+    (1,  -1, "float"):  c_halffloat_type,
     (1,  0, "float"):  c_float_type,
     (1,  0, "double"): c_double_type,
     (1,  1, "double"): c_longdouble_type,
