@@ -87,6 +87,7 @@ class PyrexType(BaseType):
     is_builtin_type = 0
     is_numeric = 0
     is_int = 0
+    is_halffloat = 0
     is_float = 0
     is_complex = 0
     is_void = 0
@@ -1108,6 +1109,11 @@ class CFloatType(CNumericType):
 
     def assignable_from_resolved_type(self, src_type):
         return (src_type.is_numeric and not src_type.is_complex) or src_type is error_type
+
+class CHalfFloatType(CFloatType):
+    is_halffloat = 1
+    to_py_function = None
+    from_py_function = None
 
 
 class CComplexType(CNumericType):
