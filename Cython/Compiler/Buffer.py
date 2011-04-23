@@ -734,7 +734,147 @@ typedef struct {
 
 static CYTHON_INLINE int  __Pyx_GetBufferAndValidate(Py_buffer* buf, PyObject* obj, __Pyx_TypeInfo* dtype, int flags, int nd, int cast, __Pyx_BufFmt_StackElem* stack);
 static CYTHON_INLINE void __Pyx_SafeReleaseBuffer(Py_buffer* info);
+
+static CYTHON_INLINE short float __Pyx_HalfFloat_Pack(float);
+static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(short float);
 """, impl="""
+
+/* see double _PyFloat_Unpack2(const unsigned char *p, int le) from cpython */
+static CYTHON_INLINE float __Pyx_HalfFloat_Unpack(%(type)s hh) {
+    unsigned char sign;
+    int e;
+    unsigned int f;
+    float x;
+    unsigned int h = hh;
+
+    /* First byte */
+    sign = (h & 0x8000) >> 15;
+    e = (h & 0x7c00) >> 10;
+    f = (h & 0x03ff);
+
+    if (e == 0x1f) {
+        /* if (double_format == unknown_format) {
+            PyErr_SetString(
+                PyExc_ValueError,
+                "can't unpack IEEE 754 special value "
+                "on non-IEEE platform");
+            return -1;
+        }
+        else */ if (f) {
+            return Py_NAN;
+        }
+        else if (sign) {
+            return -Py_HUGE_VAL;
+        }
+        else {
+            return Py_HUGE_VAL;
+        }
+    }
+
+    x = (float)f / 1024.0;
+
+    if (e == 0)
+        e = -14;
+    else {
+        x += 1.0;
+        e -= 15;
+    }
+    x = ldexp(x, e);
+
+    if (sign)
+        x = -x;
+
+    return x;
+}
+
+/* see double _PyFloat_Pack2(const unsigned char *p, int le) from cpython */
+static CYTHON_INLINE %(type)s __Pyx_HalfFloat_Pack(float x) {
+    unsigned int sign;
+    int e;
+    double f;
+    /* %(type)s bits; */
+    unsigned int bits;
+
+    /* signbit(x) allows us to preserve -0.0, while x < 0.0 does not */
+    if (signbit(x)) {
+        sign = 1;
+        x = -x;
+    }
+    else
+        sign = 0;
+
+    if (x == 0) {
+        e = 0;
+        bits = 0;
+    }
+    else if (isinf(x)) {
+        e = 0x1f;
+        bits = 0;
+    }
+    else if (isnan(x)) {
+        e = 0x1f;
+        bits = 0x200;
+    }
+    else {
+        f = frexp(x, &e);
+
+        /* Normalize f to be in the range [1.0, 2.0) */
+        if (0.5 <= f && f < 1.0) {
+            f *= 2.0;
+            e--;
+        }
+        else if (f == 0.0)
+            e = 0;
+        else {
+            e = 0x1f;
+            bits = 0x200;
+            return bits | (e << 10) | (sign << 15);
+
+            /*
+            PyErr_SetString(PyExc_SystemError,
+                            "frexp() result out of range");
+            return -1;
+            */
+        }
+
+        if (e >= 16) {
+            e = 0x1f;
+            bits = 0x00;
+            return bits | (e << 10) | (sign << 15);
+        }
+        else if (e < -14) {
+            /* Gradual underflow */
+            f = ldexp(f, 14 + e);
+            e = 0;
+        }
+        else {
+            e += 15;
+            f -= 1.0; /* Get rid of leading 1 */
+        }
+
+        f *= 1024.0; /* 2**10 */
+        /* Round to even */
+        bits = (unsigned short)f; /* Note the truncation */
+        if ((f - bits > 0.5) || (f - bits == 0.5 && bits % 2)) {
+            bits++;
+        }
+
+        assert(bits <= 1024);
+        if (bits >> 10) {
+            /* The carry propagated out of a string of 10 1 bits. */
+            bits = 0;
+            ++e;
+            if (e >= 31) {
+                e = 0x1f;
+                bits = 0x00;
+                return bits | (e << 10) | (sign << 15);
+            }
+        }
+    }
+
+    return bits | (e << 10) | (sign << 15);
+}
+
 static CYTHON_INLINE int __Pyx_IsLittleEndian(void) {
   unsigned int n = 1;
   return *(unsigned char*)(&n) != 0;
